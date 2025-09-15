@@ -30,14 +30,26 @@ enum {
 static uint8_t *sbuf = NULL;
 static uint32_t *audio_base = NULL;
 
+void audio_callback(void *userdata,uint8_t*stream,int len){
+  int count = audio_base[reg_count];
+  if(len>count) memset(stream,0,len);
+  uint32_t copy_bytes = ( len < count) ? len : count;
+  memcpy(stream,sbuf,copy_bytes);
+  int remain = (count - copy_bytes > 0) ? count - copy_bytes : 0;
+  audio_base[reg_count] = remain;
+  if(remain > 0){
+    memmove(sbuf,sbuf+copy_bytes,remain);
+  } 
+}
+
 void init_SDL_audio(){
   SDL_AudioSpec s = {};
   s.format = AUDIO_S16SYS;
   s.userdata = NULL;
-  s.freq = reg_freq;
-  s.channels = reg_channels;
-  s.samples = reg_samples;
-
+  s.freq = audio_base[reg_freq];
+  s.channels = audio_base[reg_channels];
+  s.samples = audio_base[reg_samples];
+  s.callback = audio_callback;
   SDL_InitSubSystem(SDL_INIT_AUDIO);
   SDL_OpenAudio(&s,NULL);
   SDL_PauseAudio(0);
