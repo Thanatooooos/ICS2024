@@ -10,9 +10,9 @@
 
 void __am_audio_init()
 {
-  outl(AUDIO_FREQ_ADDR, 22050);
-  outl(AUDIO_CHANNELS_ADDR, 2);
-  outl(AUDIO_SAMPLES_ADDR, 16384);
+  // outl(AUDIO_FREQ_ADDR, 8000);
+  // outl(AUDIO_CHANNELS_ADDR, 1);
+  // outl(AUDIO_SAMPLES_ADDR, 1024);
   outl(AUDIO_SBUF_SIZE_ADDR, 65536);
   outl(AUDIO_INIT_ADDR, 1);
   outl(AUDIO_COUNT_ADDR, 0);
@@ -26,9 +26,13 @@ void __am_audio_config(AM_AUDIO_CONFIG_T *cfg)
 
 void __am_audio_ctrl(AM_AUDIO_CTRL_T *ctrl)
 {
-  ctrl->channels = inl((uintptr_t)AUDIO_CHANNELS_ADDR);
-  ctrl->freq = inl((uintptr_t)AUDIO_FREQ_ADDR);
-  ctrl->samples = inl((uintptr_t)AUDIO_SAMPLES_ADDR);
+  // ctrl->channels = inl((uintptr_t)AUDIO_CHANNELS_ADDR);
+  // ctrl->freq = inl((uintptr_t)AUDIO_FREQ_ADDR);
+  // ctrl->samples = inl((uintptr_t)AUDIO_SAMPLES_ADDR);
+  outl(AUDIO_FREQ_ADDR, ctrl->freq);
+  outl(AUDIO_CHANNELS_ADDR, ctrl->channels);
+  outl(AUDIO_SAMPLES_ADDR, ctrl->samples);
+
 }
 
 void __am_audio_status(AM_AUDIO_STATUS_T *stat)

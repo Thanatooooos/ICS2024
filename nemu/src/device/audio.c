@@ -56,6 +56,10 @@ void init_SDL_audio(){
 }
 
 static void audio_io_handler(uint32_t offset, int len, bool is_write) {
+  if(audio_base[reg_init] == 1){
+    init_SDL_audio();
+    audio_base[reg_init] = 0;
+  }
 }
 
 void init_audio() {
@@ -69,6 +73,6 @@ void init_audio() {
 
   sbuf = (uint8_t *)new_space(CONFIG_SB_SIZE);
   add_mmio_map("audio-sbuf", CONFIG_SB_ADDR, sbuf, CONFIG_SB_SIZE, NULL);
-  IFDEF(CONFIG_HAS_AUDIO,init_SDL_audio());
-  IFDEF(CONFIG_HAS_AUDIO,memset(sbuf,0,CONFIG_SB_SIZE));
+  // IFDEF(CONFIG_HAS_AUDIO,init_SDL_audio());
+  // IFDEF(CONFIG_HAS_AUDIO,memset(sbuf,0,CONFIG_SB_SIZE));
 }

@@ -21,11 +21,30 @@
 #define R(i) gpr(i)
 #define Mr vaddr_read
 #define Mw vaddr_write
+#define CSR(i) cpu.csr[i]
+enum{
+  mepc=0,mstatus,mcause,mtvec
+};
+int CSR_INDEX(word_t addr){ 
+  switch (addr)
+   {
+   case 0x300:
+    /* code */
+    return mstatus;
+   case 0x305:
+    return mtvec;
+   case 0x341:
+    return mepc;
+   case 0x342:
+    return mcause;
+   default:
+    return -1;
+   }
+}
 enum {
   TYPE_I, TYPE_U, TYPE_S,
   TYPE_N, TYPE_J,// none
-  TYPE_R,
-  TYPE_B,
+  TYPE_R,TYPE_B,
 };
 
 #define src1R() do { *src1 = R(rs1); } while (0)
@@ -125,6 +144,11 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    , J, JAL());
   INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   , I, s->dnpc = src1 + imm ; R(rd) = s->pc + 4);
 
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , I, s->dnpc = isa_raise_intr(11,s->pc));
+  INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , I, R(rd) = CSR(CSR_INDEX(imm)), CSR(CSR_INDEX(imm)) = src1);
+  INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , I, R(rd) = CSR(CSR_INDEX(imm)), CSR(CSR_INDEX(imm)) = ( src1 == 0 ? CSR(CSR_INDEX(imm)) : src1 | CSR(CSR_INDEX(imm))));
+  INSTPAT("??????? ????? ????? 011 ????? 11100 11", csrrc  , I, R(rd) = CSR(CSR_INDEX(imm)),  CSR(CSR_INDEX(imm)) = ( src1 == 0 ? CSR(CSR_INDEX(imm)) : ~(src1 & CSR(CSR_INDEX(imm)))));
+  INSTPAT("0000000 00010 00000 000 00000 11100 11", mret   , I, s->dnpc = CSR(CSR_INDEX(0x341)));
 
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   
