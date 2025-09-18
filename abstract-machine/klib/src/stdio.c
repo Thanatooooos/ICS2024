@@ -7,7 +7,7 @@
 
 int printf(const char *fmt, ...)
 {
-#define PRINT_MAX_SIZE 1024
+#define PRINT_MAX_SIZE 4096
   char out[PRINT_MAX_SIZE];
   va_list args;
   va_start(args, fmt);
