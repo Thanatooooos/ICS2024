@@ -29,27 +29,38 @@ size_t ramdisk_write(const void *buf, size_t offset, size_t len);
 #error unsupported ISA __ISA__
 #endif
 
+int fs_open(const char *filename, int flags, int mode);
+size_t fs_lseek(int fd, size_t offset, int whence);
+size_t fs_read(int fd, void *buf, size_t len);
+size_t fs_write(int fd, const void* buf, size_t len);
+int fs_close(int fd);
+enum {SEEK_SET, SEEK_CUR, SEEK_END};
+
 static uintptr_t loader(PCB *pcb, const char *filename)
 {
-
+  int fd = fs_open(filename,0,0);
   Elf_Ehdr ehdr;
-  ramdisk_read(&ehdr, 0, Elf_Size);
+  fs_lseek(fd,0,SEEK_SET);
+  fs_read(fd,&ehdr,Elf_Size);
   //assert(*(uint32_t *)ehdr.e_ident == 0x7f454c46);
   assert(ehdr.e_machine == EXPECT_TYPE);
   Elf_Phdr phdrs[ehdr.e_phnum];
-  ramdisk_read(phdrs, ehdr.e_phoff, ehdr.e_phentsize * ehdr.e_phnum);
+  fs_lseek(fd,ehdr.e_phoff,SEEK_SET);
+  fs_read(fd,phdrs,ehdr.e_phentsize * ehdr.e_phnum);
   for (int i = 0; i < ehdr.e_phnum; i++)
   {
     Elf_Phdr *p = &phdrs[i];
     if (p->p_type == PT_LOAD)
     {
-      ramdisk_read((void *)p->p_vaddr,p->p_offset, p->p_filesz);
+      fs_lseek(fd,p->p_offset,SEEK_SET);
+      fs_read(fd,(void *)p->p_vaddr,p->p_filesz);
       if (p->p_memsz > p->p_filesz)
       {
         memset((void *)p->p_vaddr + p->p_filesz,0,p->p_memsz-p->p_filesz);        
       }
     }
   }
+  fs_close(fd);
 
   return ehdr.e_entry;
 }
