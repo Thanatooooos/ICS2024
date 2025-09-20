@@ -44,13 +44,18 @@ int vsprintf(char *out, const char *fmt, va_list ap)
         char str[256];
         itoa(d, str);
         memmove(out + count, str, strlen(str));
-        count += strlen(str);
-        free(str);
         break;
       }
       case 'c':
         char x = (char)va_arg(ap,int);
         out[count++] = x;
+        break;
+      case 'p':
+        uintptr_t p = va_arg(ap,uintptr_t);
+        char s[256];
+        ptr_to_hex_string(p,s,256);
+        memmove(out+count,s,strlen(s));
+        count += strlen(s);
         break;
       default:
         out[count++] = c;
@@ -107,4 +112,51 @@ void itoa(int s, char *str)
   }
   str[i] = '\0';
 }
+int ptr_to_hex_string(uintptr_t addr, char *str, int max_len) {
+    if (max_len < 3) return -1;
+
+    const char hex_digits[] = "0123456789abcdef";
+
+    // 从 str[2] 开始写入十六进制数字（为 "0x" 预留空间）
+    int pos = 2;
+
+    // 特殊情况：地址为 0
+    if (addr == 0) {
+        if (max_len < 4) return -1;
+        str[0] = '0';
+        str[1] = 'x';
+        str[2] = '0';
+        str[3] = '\0';
+        return 3;
+    }
+
+    // 记录起始位置，用于后续反转
+    int start_pos = pos;
+
+    // 从最低位开始提取十六进制数字
+    while (addr > 0 && pos < max_len - 1) {
+        str[pos] = hex_digits[addr & 0xF];
+        addr >>= 4;
+        pos++;
+    }
+    str[pos] = '\0';
+
+    if (addr > 0) return -1; // 缓冲区不足
+
+    int hex_len = pos - start_pos;
+
+    // 反转从 start_pos 开始的 hex_len 个字符
+    for (int j = 0; j < hex_len / 2; j++) {
+        char temp = str[start_pos + j];
+        str[start_pos + j] = str[start_pos + hex_len - 1 - j];
+        str[start_pos + hex_len - 1 - j] = temp;
+    }
+
+    // 最后填入 "0x"
+    str[0] = '0';
+    str[1] = 'x';
+
+    return hex_len + 2;
+}
+
 #endif
