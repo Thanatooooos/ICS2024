@@ -61,37 +61,45 @@ void _exit(int status) {
 }
 
 int _open(const char *path, int flags, mode_t mode) {
-  _syscall_(SYS_open,path,flags,mode);
-  return 0;
+  return _syscall_(SYS_open,path,flags,mode);
 }
 
 int _write(int fd, void *buf, size_t count) {
-  _syscall_(SYS_write,fd,buf,count);
-  return 0;
+  return _syscall_(SYS_write,fd,buf,count);
 }
+extern char _end;
+char *heap_start = NULL;
 
 void *_sbrk(intptr_t increment) {
+  if(heap_start == NULL){
+    heap_start = &_end;
+  }
+  if(increment % 4 != 0){
+    increment += 4 - increment % 4;
+  }
+  char *old = heap_start;
+  heap_start += increment;
   _syscall_(SYS_brk,increment,0,0);
-  return (void *)0;
+  return (void *)old;
 }
 
 int _read(int fd, void *buf, size_t count) {
-  _syscall_(SYS_read,fd,buf,count);
-  return 0;
+  return _syscall_(SYS_read,fd,buf,count);
+  
 }
 
 int _close(int fd) {
-  _syscall_(SYS_close,fd,0,0);
-  return 0;
+  return _syscall_(SYS_close,fd,0,0);
+  
 }
 
 off_t _lseek(int fd, off_t offset, int whence) {
-  _syscall_(SYS_lseek,fd,offset,whence);
-  return 0;
+  return _syscall_(SYS_lseek,fd,offset,whence);
+   
 }
 
 int _gettimeofday(struct timeval *tv, struct timezone *tz) {
-  _exit(SYS_gettimeofday);
+  _syscall_(SYS_gettimeofday,tv,tz,0);
   return 0;
 }
 

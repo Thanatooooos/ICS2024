@@ -42,7 +42,10 @@ static uintptr_t loader(PCB *pcb, const char *filename)
   Elf_Ehdr ehdr;
   fs_lseek(fd,0,SEEK_SET);
   fs_read(fd,&ehdr,Elf_Size);
-  //assert(*(uint32_t *)ehdr.e_ident == 0x7f454c46);
+  if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0) {
+      printf("Not an ELF file\n");
+      assert(0);
+  }
   assert(ehdr.e_machine == EXPECT_TYPE);
   Elf_Phdr phdrs[ehdr.e_phnum];
   fs_lseek(fd,ehdr.e_phoff,SEEK_SET);
@@ -61,7 +64,6 @@ static uintptr_t loader(PCB *pcb, const char *filename)
     }
   }
   fs_close(fd);
-
   return ehdr.e_entry;
 }
 

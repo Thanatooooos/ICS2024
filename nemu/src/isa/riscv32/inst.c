@@ -22,6 +22,8 @@
 #define Mr vaddr_read
 #define Mw vaddr_write
 #define CSR(i) cpu.csr[i]
+#define FT(i) cpu.ft[i]
+
 enum{
   mepc=0,mstatus,mcause,mtvec,satp
 };
@@ -47,6 +49,7 @@ enum {
   TYPE_I, TYPE_U, TYPE_S,
   TYPE_N, TYPE_J,// none
   TYPE_R,TYPE_B,
+  TYPE_F,
 };
 
 #define src1R() do { *src1 = R(rs1); } while (0)
@@ -56,6 +59,8 @@ enum {
 #define immS() do { *imm = (SEXT(BITS(i, 31, 25), 7) << 5) | BITS(i, 11, 7); } while(0)
 #define immJ() do { *imm = (SEXT(BITS(i, 31, 31), 1) << 20 | BITS(i, 19, 12) << 12 | BITS(i, 20, 20) << 11 |BITS(i, 30, 21) << 1); } while(0)
 #define immB() do { *imm = (SEXT((BITS(i,31,31)<<11),12) | (BITS(i,7,7) << 10) | (BITS(i,30,25) << 4 ) | (BITS(i,11,8)) ) << 1; } while(0)
+#define FT1() do { *ft1 = FT(rs1); } while(0)
+#define FT2() do{ *ft2 = FT(rs2); } while(0)
 #define JAL()            \
   do                     \
   {                      \
@@ -63,7 +68,7 @@ enum {
     s->dnpc = s->pc + imm ; \
   }while(0)
 
-static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
+static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type, double *ft1, double *ft2) {
   uint32_t i = s->isa.inst;
   int rs1 = BITS(i, 19, 15);
   int rs2 = BITS(i, 24, 20);
@@ -75,6 +80,7 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
     case TYPE_J:                   immJ(); break;
     case TYPE_R: src1R(); src2R();         break;
     case TYPE_B: src1R(); src2R(); immB(); break;
+    case TYPE_F: FT1();   FT2();           break; 
     case TYPE_N: break;
     default: panic("unsupported type = %d", type);
   }
@@ -87,7 +93,8 @@ static int decode_exec(Decode *s) {
 #define INSTPAT_MATCH(s, name, type, ... /* execute body */ ) { \
   int rd = 0; \
   word_t src1 = 0, src2 = 0, imm = 0; \
-  decode_operand(s, &rd, &src1, &src2, &imm, concat(TYPE_, type)); \
+  double ft1 = 0, ft2 = 0;\
+  decode_operand(s, &rd, &src1, &src2, &imm, concat(TYPE_, type), &ft1, &ft2); \
   __VA_ARGS__ ; \
 }
 
@@ -151,6 +158,12 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , I, R(rd) = CSR(CSR_INDEX(imm)); CSR(CSR_INDEX(imm)) = ( src1 == 0 ? CSR(CSR_INDEX(imm)) : src1 | CSR(CSR_INDEX(imm))));
   INSTPAT("??????? ????? ????? 011 ????? 11100 11", csrrc  , I, R(rd) = CSR(CSR_INDEX(imm));  CSR(CSR_INDEX(imm)) = ( src1 == 0 ? CSR(CSR_INDEX(imm)) : ~(src1 & CSR(CSR_INDEX(imm)))));
   INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , I, s->dnpc = CSR(CSR_INDEX(0x341)));
+  //double reg
+  INSTPAT("0001101 ????? ????? ??? ????? 10100 11", fdiv.d  , F, FT(rd) = ft1 / ft2 );
+  INSTPAT("0000001 ????? ????? ??? ????? 10100 11", fadd.d  , F, FT(rd) = ft1 + ft2);
+  INSTPAT("1100001 00000 ????? ??? ????? 10100 11", fcvt.w.d, F, R(rd) = (int)ft1);
+  INSTPAT("1101001 00000 ????? ??? ????? 10100 11", fcvt.d.w, I, FT(rd) = (double)((int32_t)src1));
+  INSTPAT("??????? ????? ????? 011 ????? 00001 11", fld     , I, FT(rd) = (double)((int64_t)(Mr(src1 + imm, 4)) << 32 | Mr(src1 + imm + 4, 4)));
 
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   

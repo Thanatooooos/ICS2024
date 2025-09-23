@@ -44,6 +44,7 @@ int vsprintf(char *out, const char *fmt, va_list ap)
         char str[256];
         itoa(d, str);
         memmove(out + count, str, strlen(str));
+        count += strlen(str);
         break;
       }
       case 'c':

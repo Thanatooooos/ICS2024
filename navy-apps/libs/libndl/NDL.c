@@ -3,17 +3,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include<sys/time.h>
+#include<assert.h>
 
 static int evtdev = -1;
 static int fbdev = -1;
 static int screen_w = 0, screen_h = 0;
+static int canvas_w = 0, canvas_h = 0;
+static int canvas_x = 0, canvas_y = 0;
 
 uint32_t NDL_GetTicks() {
-  return 0;
+  struct timeval current;
+  gettimeofday(&current,NULL);
+  double now = current.tv_sec + current.tv_usec / 1000000.0;
+  return now;
 }
 
 int NDL_PollEvent(char *buf, int len) {
-  return 0;
+  FILE *fp = fopen("/dev/events","r+");
+  fseek(fp,0,SEEK_SET);
+  fread(buf,sizeof(char), len, fp);
+  return len;
 }
 
 void NDL_OpenCanvas(int *w, int *h) {
@@ -34,9 +44,37 @@ void NDL_OpenCanvas(int *w, int *h) {
     }
     close(fbctl);
   }
+  else{
+    canvas_h = *h == 0 || canvas_h > screen_h ? screen_h : *h;
+    canvas_w = *w == 0 || canvas_w > screen_w ? screen_w : *w;
+    *h = canvas_h;
+    *w = canvas_w;
+    printf("canvas_w : %d  canvas_h : %d\n",canvas_w, canvas_h);
+    printf("screen_w : %d  screen_h : %d\n",screen_w, screen_h);
+    canvas_x = (screen_w - canvas_w) / 2;
+    canvas_y = (screen_h - canvas_h) / 2;
+    printf("canvas_x : %d  canvas_y : %d\n",canvas_x, canvas_y);
+  }
 }
 
 void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
+   w = w ? w : canvas_w;
+   h = h ? h : canvas_h;
+   int fd = open("/dev/fb", 1);
+  for (int i = 0; i < h && y + i < canvas_h; ++i) {
+    lseek(fd, ((y + canvas_y + i) * screen_w + (x + canvas_x)) * sizeof(uint32_t), SEEK_SET);
+    write(fd, pixels + i * w,  (w < canvas_w - x ? w : canvas_w - x) * sizeof(uint32_t));
+  }
+  assert(close(fd)==0);
+    // for (int i = 0; i < h && y + i < canvas_h; ++i) {
+
+    //     size_t offset = ((y + i) * canvas_w + x) * sizeof(uint32_t);
+
+    //     lseek(fd, offset, SEEK_SET);
+
+    //     size_t bytes_to_write = (w < canvas_w - x ? w : canvas_w - x) * sizeof(uint32_t);
+    //     write(fd, pixels + i * w, bytes_to_write);
+    // }
 }
 
 void NDL_OpenAudio(int freq, int channels, int samples) {
@@ -57,6 +95,17 @@ int NDL_Init(uint32_t flags) {
   if (getenv("NWM_APP")) {
     evtdev = 3;
   }
+  FILE *fp = fopen("/proc/dispinfo", "r");
+  char buf[64];
+  int nread = fread(buf, sizeof(char), sizeof(buf) - 1, fp);
+  buf[nread] = '\0';
+  int i = 0;
+  while (buf[i] != ':') ++i;
+  screen_w = atoi(buf + i + 1);
+  ++i;
+  while (buf[i] != ':') ++i;
+  screen_h = atoi(buf + i + 1);
+
   return 0;
 }
 
