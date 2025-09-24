@@ -6,7 +6,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+extern uint32_t start;
 int NDL_Init(uint32_t flags);
 void NDL_Quit();
 uint32_t NDL_GetTicks();

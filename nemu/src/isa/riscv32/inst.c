@@ -49,7 +49,13 @@ enum {
   TYPE_I, TYPE_U, TYPE_S,
   TYPE_N, TYPE_J,// none
   TYPE_R,TYPE_B,
-  TYPE_F,
+  TYPE_F,TYPE_D,
+};
+
+union DoubleBits {
+  double d;
+  uint64_t u64;
+  uint32_t u32[2];  // [0] = 低32位, [1] = 高32位 (小端)
 };
 
 #define src1R() do { *src1 = R(rs1); } while (0)
@@ -81,6 +87,7 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
     case TYPE_R: src1R(); src2R();         break;
     case TYPE_B: src1R(); src2R(); immB(); break;
     case TYPE_F: FT1();   FT2();           break; 
+    case TYPE_D: src1R(); FT2();   immS(); break;
     case TYPE_N: break;
     default: panic("unsupported type = %d", type);
   }
@@ -161,9 +168,24 @@ static int decode_exec(Decode *s) {
   //double reg
   INSTPAT("0001101 ????? ????? ??? ????? 10100 11", fdiv.d  , F, FT(rd) = ft1 / ft2 );
   INSTPAT("0000001 ????? ????? ??? ????? 10100 11", fadd.d  , F, FT(rd) = ft1 + ft2);
+  INSTPAT("0000101 ????? ????? ??? ????? 10100 11", fsub.d  , F, FT(rd) = ft1 - ft2);
+  INSTPAT("1010001 ????? ????? 000 ????? 10100 11", fle.d   , F, R(rd) = (ft1 <= ft2) ? 1 : 0);
   INSTPAT("1100001 00000 ????? ??? ????? 10100 11", fcvt.w.d, F, R(rd) = (int)ft1);
   INSTPAT("1101001 00000 ????? ??? ????? 10100 11", fcvt.d.w, I, FT(rd) = (double)((int32_t)src1));
-  INSTPAT("??????? ????? ????? 011 ????? 00001 11", fld     , I, FT(rd) = (double)((int64_t)(Mr(src1 + imm, 4)) << 32 | Mr(src1 + imm + 4, 4)));
+  INSTPAT("1100001 00001 ????? ??? ????? 10100 11", fcvt.wu.d,F, R(rd) = (uint32_t)ft1);
+  INSTPAT("1101001 00001 ????? ??? ????? 10100 11", fcvt.d.wu,F, FT(rd) = (double)((uint32_t)src1));
+  INSTPAT("??????? ????? ????? 011 ????? 00001 11", fld, I, {
+  union DoubleBits u;
+  u.u32[0] = Mr(src1 + imm,     4);  // 读低32位
+  u.u32[1] = Mr(src1 + imm + 4, 4);  // 读高32位
+  FT(rd) = u.d;  // 转成 double
+  }); 
+  INSTPAT("??????? ????? ????? 011 ????? 01001 11", fsd     , D, {
+  union DoubleBits u;
+  u.d = ft2;                    // 取出浮点寄存器中的 double 值
+  Mw(src1 + imm,     4, u.u32[0]);  // 存低32位
+  Mw(src1 + imm + 4, 4, u.u32[1]);  // 存高32位
+  });
 
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   
