@@ -36,6 +36,15 @@ void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_
       }
     }
   }
+  else if(srcrect && !dstrect){
+    for(int i = 0;(i + srcrect->x < src->w) && (i < dst->w);i++){
+      for(int j = 0;(j + srcrect->y < src->h) && (i < dst->h);j++){
+        uint8_t *src_pix = (uint8_t *)src->pixels + (j + srcrect->y) * src->pitch+ (i+srcrect->x) * bits;
+        uint8_t *dst_pixel = (uint8_t *)dst->pixels + j * dst->pitch + i * bits;
+        memcpy(dst_pixel,src_pix,bits);
+      }
+    }
+  }
   else
   {
     dstrect->w = srcrect->w;
@@ -185,6 +194,7 @@ SDL_Surface *SDL_CreateRGBSurfaceFrom(void *pixels, int width, int height, int d
 
 void SDL_FreeSurface(SDL_Surface *s)
 {
+  printf("enter free\n");
   if (s != NULL)
   {
     if (s->format != NULL)
@@ -193,12 +203,15 @@ void SDL_FreeSurface(SDL_Surface *s)
       {
         if (s->format->palette->colors != NULL)
           free(s->format->palette->colors);
+        printf("free paltette\n");
         free(s->format->palette);
       }
+      printf("free format\n");
       free(s->format);
     }
     if (s->pixels != NULL && !(s->flags & SDL_PREALLOC))
       free(s->pixels);
+    printf("free s\n");
     free(s);
   }
 }

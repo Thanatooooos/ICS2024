@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <assert.h>
-#include<assert.h>
+#include <assert.h>
 static int evtdev = -1;
 static int fbdev = -1;
 static int screen_w = 0, screen_h = 0;
@@ -16,18 +16,20 @@ uint32_t NDL_GetTicks()
 {
   struct timeval tv;
   assert(gettimeofday(&tv, NULL) == 0);
-  return tv.tv_sec * 1000 + tv.tv_usec / 1000 ;
+  return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
 int NDL_PollEvent(char *buf, int len)
 {
   FILE *fp = fopen("/dev/events", "r+");
+  if(fp == NULL)return 0;
   fseek(fp, 0, SEEK_SET);
   if (fgets(buf, len, fp))
     // fread(buf,sizeof(char), len, fp);
-    return len;
+    return strlen(buf);
   else
     return 0;
+
 }
 
 void NDL_OpenCanvas(int *w, int *h)
@@ -60,23 +62,25 @@ void NDL_OpenCanvas(int *w, int *h)
     canvas_w = *w == 0 || canvas_w > screen_w ? screen_w : *w;
     *h = canvas_h;
     *w = canvas_w;
-    printf("canvas_w : %d  canvas_h : %d\n", canvas_w, canvas_h);
-    printf("screen_w : %d  screen_h : %d\n", screen_w, screen_h);
     canvas_x = (screen_w - canvas_w) / 2;
     canvas_y = (screen_h - canvas_h) / 2;
-    printf("canvas_x : %d  canvas_y : %d\n", canvas_x, canvas_y);
   }
+}
+
+static void canvas2screen(int cx, int cy, int *sx, int *sy)
+{
+    *sx = cx;
+    *sy = cy;
 }
 
 void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h)
 {
-  printf("enter draw\n");
+   printf("enter draw\n");
   w = w ? w : canvas_w;
   h = h ? h : canvas_h;
   int fd = open("/dev/fb", 1);
-  for (int i = 0;i<1;i++)
+  for (int i = 0; i < 1; i++)
   {
-    printf("i = %d\n",i);
     lseek(fd, ((y + canvas_y + i) * screen_w + (x + canvas_x)) * sizeof(uint32_t), SEEK_SET);
     write(fd, pixels + i * w, (w < canvas_w - x ? w : canvas_w - x) * sizeof(uint32_t));
   }

@@ -12,63 +12,44 @@ int SDL_PushEvent(SDL_Event *ev)
 {
   return 0;
 }
-bool handleEvent(SDL_Event *event, char *buf)
+
+int SDL_PollEvent(SDL_Event *ev)
 {
+  char buf[64];
   if (NDL_PollEvent(buf, sizeof(buf)))
   {
-    char action[2];
-    strncpy(action, buf, 2);
-    char name[16];
-    strcpy(name, buf + 3);
-    for (int i = 0; i < strlen(name); i++)
+    char type[8];
+    char key[16];
+    if (sscanf(buf, "%s %s", type, key) == 2)
     {
-      if (name[i] == ' ' || name[i] == '\n')
+      ev->key.type = (strcmp(type, "kd") == 0) ? SDL_KEYDOWN : SDL_KEYUP;
+      for (int i = 0; i < sizeof(keyname) / sizeof(keyname[0]); i++)
       {
-        name[i] = '\0';
-        break;
+        if (strcmp(keyname[i], key) == 0)
+        {
+          printf("catch the key : %s\n", keyname[i]);
+          ev->key.keysym.sym = i;
+          return 1;
+        }
       }
     }
-    if (strcmp(action, "ku") == 0)
-    {
-      event->type = SDL_KEYUP;
-    }
-    else if (strcmp(action, "kd") == 0)
-    {
-      event->type = SDL_KEYDOWN;
-    }
-    for (int i = 1; i < sizeof(keyname) / sizeof(keyname[0]); i++)
-    {
+  }
+  return 0;
 
-      if (strcmp(keyname[i], name) == 0)
-      {
-        event->key.keysym.sym = i;
-        break;
-      }
-    }
-    return 1;
-  }
-  return 0;
-}
-int SDL_PollEvent(SDL_Event *ev)
-{ 
-  char buf[64];
-  if(handleEvent(ev,buf)){
-    return 1;
-  }
-  return 0;
 }
 
 int SDL_WaitEvent(SDL_Event *event)
 {
+  static int count = 0;
   memset(event, 0, sizeof(event));
   while (1)
   {
-    char buf[64];
-    if(handleEvent(event,buf)){
+    if (SDL_PollEvent(event))
+    {
+      printf("call wait %drd time\n", count++);
       return 1;
-    } 
+    }
   }
-  return 1;
 }
 
 int SDL_PeepEvents(SDL_Event *ev, int numevents, int action, uint32_t mask)
