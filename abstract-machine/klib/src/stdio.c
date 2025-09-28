@@ -58,6 +58,13 @@ int vsprintf(char *out, const char *fmt, va_list ap)
         memmove(out+count,s,strlen(s));
         count += strlen(s);
         break;
+      case 'u':
+        uint32_t u = va_arg(ap, uint32_t);
+        char m[256];
+        u32toa(u, m);
+        memmove(out+count, m, strlen(m));
+        count += strlen(m);
+        break;
       default:
         out[count++] = c;
         break;
@@ -159,5 +166,33 @@ int ptr_to_hex_string(uintptr_t addr, char *str, int max_len) {
 
     return hex_len + 2;
 }
+void u32toa(uint32_t n, char *str) {
+    size_t i = 0;
+    
+    // 处理特殊情况：n 为 0
+    if (n == 0) {
+        str[i++] = '0';
+    } 
+    // 处理正数（对于 uint32_t，所有非零数都是“正”的）
+    else {
+        // 由于是无符号，不需要处理负号
+        // 将数字分解并存入数组（逆序）
+        int digits[10]; // uint32_t 最多有 10 位十进制数
+        int count = 0;
+        while (n > 0) {
+            digits[count++] = n % 10;
+            n /= 10;
+        }
+        
+        // 从高位到低位写入字符串
+        for (int j = count - 1; j >= 0; j--) {
+            str[i++] = digits[j] + '0';
+        }
+    }
+    
+    // 添加字符串结束符
+    str[i] = '\0';
+}
+
 
 #endif

@@ -1,5 +1,6 @@
 #include <common.h>
 #include "syscall.h"
+#include <proc.h>
 
 struct timeval
 {
@@ -12,7 +13,7 @@ struct timeval
 #endif
 };
 
-
+void naive_uload(PCB *pcb, const char *filename);
 int fs_open(const char *filename, int flags, int mode);
 size_t fs_lseek(int fd, size_t offset, int whence);
 size_t fs_read(int fd, void *buf, size_t len);
@@ -29,6 +30,7 @@ void sys_open(Context *c);
 void sys_lseek(Context *c);
 void sys_close(Context *c);
 void sys_gettimeofday(Context *c);
+void sys_execve(Context *c);
 
 void do_syscall(Context *c)
 {
@@ -64,6 +66,9 @@ void do_syscall(Context *c)
   case SYS_gettimeofday:
     sys_gettimeofday(c);
     break;
+  case SYS_execve:
+    sys_execve(c);
+    break;
   default:
     panic("Unhandled syscall ID = %d", a[0]);
   }
@@ -76,7 +81,9 @@ void sys_yield(Context *c)
 void sys_exit(Context *c)
 {
   c->GPRx = 0;
-  halt(c->GPRx);
+  char s[16] = "/bin/menu";
+  c->GPR2 = (uintptr_t )s;
+  sys_execve(c);
 }
 void sys_write(Context *c)
 {
@@ -104,5 +111,9 @@ void sys_gettimeofday(Context *c){
   uint64_t us = io_read(AM_TIMER_UPTIME).us;
   tv->tv_sec = us / 1000000;
   tv->tv_usec = us % 1000000;
+  c->GPRx = 0;
+}
+void sys_execve(Context *c){
+  naive_uload(NULL,(const char *)c->GPR2);
   c->GPRx = 0;
 }

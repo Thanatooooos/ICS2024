@@ -39,6 +39,7 @@ int    vsprintf  (char *str, const char *format, va_list ap);
 int    vsnprintf (char *str, size_t size, const char *format, va_list ap);
 void   itoa      (int s,char *str);
 int ptr_to_hex_string(uintptr_t addr, char *str, int max_len);
+void u32toa(uint32_t n, char *str);
 // assert.h
 #ifdef NDEBUG
   #define assert(ignore) ((void)0)

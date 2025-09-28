@@ -10,61 +10,20 @@ void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_
   assert(dst && src);
   assert(dst->format->BitsPerPixel == src->format->BitsPerPixel);
   uint8_t bits = dst->format->BytesPerPixel;
-  if (srcrect == NULL && dstrect)
-  {
-    int dstx = dstrect->x;
-    int dsty = dstrect->y;
-
-    dstrect->w = src->w;
-    dstrect->h = src->h;
-    for (int i = 0; (i < src->w) && (i + dstx < dst->w); i++)
-    {
-      for (int j = 0; (j < src->h) && (j + dsty < dst->h); j++)
-      {
-        uint8_t *src_pixels = (uint8_t *)src->pixels + j * src->pitch + i * bits;
-        uint8_t *dst_pixels = (uint8_t *)dst->pixels + (j + dsty) * dst->pitch + (i + dstx) * bits;
-        memcpy(dst_pixels, src_pixels, bits);
-      }
+  SDL_Rect s = {0, 0, src->w, src->h};
+  if(srcrect == NULL) srcrect = &s;
+  SDL_Rect d = s;
+  if(dstrect == NULL) dstrect = &d;
+  int srcx = srcrect->x; int srcy = srcrect->y;
+  int srcw = srcrect->w; int srch = srcrect->h;
+  int dstx = dstrect->x; int dsty = dstrect->y;
+  for(int i = 0;(i < srcw) && (i + srcx < src->w) && (i + dstx < dst->w); i++){
+    for(int j = 0;(j < srch) && (j + srcy < src->h) && (j + dsty < dst->h); j++){
+      uint8_t * src_p = (uint8_t *)src->pixels + (j + srcy) * src->pitch + (i + srcx) * bits;
+      uint8_t * dst_p = (uint8_t *)dst->pixels + (j + dsty) * dst->pitch + (i + dstx) * bits;
+      memcpy(dst_p, src_p, bits);
     }
-  }
-  else if(!srcrect && !dstrect){
-    for(int i = 0;(i<src->w)&&(i<dst->w);i++){
-      for(int j=0;(j<src->h)&&(j<dst->h);j++){
-        uint8_t *src_pixel = (uint8_t *)src->pixels + j * src->pitch + i * bits;
-        uint8_t *dst_pixel = (uint8_t *)dst->pixels + j * dst->pitch + i * bits;
-        memcpy(dst_pixel,src_pixel,bits);
-      }
-    }
-  }
-  else if(srcrect && !dstrect){
-    for(int i = 0;(i + srcrect->x < src->w) && (i < dst->w);i++){
-      for(int j = 0;(j + srcrect->y < src->h) && (i < dst->h);j++){
-        uint8_t *src_pix = (uint8_t *)src->pixels + (j + srcrect->y) * src->pitch+ (i+srcrect->x) * bits;
-        uint8_t *dst_pixel = (uint8_t *)dst->pixels + j * dst->pitch + i * bits;
-        memcpy(dst_pixel,src_pix,bits);
-      }
-    }
-  }
-  else
-  {
-    dstrect->w = srcrect->w;
-    dstrect->h = srcrect->h;
-    int srcx = srcrect->x;
-    int srcy = srcrect->y;
-    int srcw = srcrect->w;
-    int srch = srcrect->h;
-    int dstx = dstrect->x;
-    int dsty = dstrect->y;
-    for (int i = 0; (i < srcw) && (i + srcx < src->w) && (i + dstx < dst->w); i++)
-    {
-      for (int j = 0; (j < srch) && (j + srcy < src->h) && (j + dsty < dst->h); j++)
-      {
-        uint8_t *src_pixel = (uint8_t *)src->pixels + (j + srcy) * src->pitch + (i + srcx) * bits;
-        uint8_t *dst_pixel = (uint8_t *)dst->pixels + (j + dsty) * dst->pitch + (i + dstx) * bits;
-        memcpy(dst_pixel, src_pixel, bits);
-      }
-    }
-  }
+  } 
 }
 
 void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color)
@@ -194,7 +153,6 @@ SDL_Surface *SDL_CreateRGBSurfaceFrom(void *pixels, int width, int height, int d
 
 void SDL_FreeSurface(SDL_Surface *s)
 {
-  printf("enter free\n");
   if (s != NULL)
   {
     if (s->format != NULL)
@@ -203,15 +161,12 @@ void SDL_FreeSurface(SDL_Surface *s)
       {
         if (s->format->palette->colors != NULL)
           free(s->format->palette->colors);
-        printf("free paltette\n");
         free(s->format->palette);
       }
-      printf("free format\n");
       free(s->format);
     }
     if (s->pixels != NULL && !(s->flags & SDL_PREALLOC))
       free(s->pixels);
-    printf("free s\n");
     free(s);
   }
 }
